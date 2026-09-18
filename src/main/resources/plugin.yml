@@ -1,0 +1,27 @@
+name: PUM-X-Tab
+version: 1.0.0
+main: ru.pumx.tab.PUMXTab
+api-version: '1.21'
+author: Kehaaa
+description: Custom PUM-X server TAB
+
+permissions:
+  pumx.owner:
+    description: Owner rank
+    default: false
+
+  pumx.admin:
+    description: Admin rank
+    default: false
+
+  pumx.moderator:
+    description: Moderator rank
+    default: false
+
+  pumx.captain:
+    description: Captain rank
+    default: false
+
+  pumx.lieutenant:
+    description: Lieutenant rank
+    default: false
