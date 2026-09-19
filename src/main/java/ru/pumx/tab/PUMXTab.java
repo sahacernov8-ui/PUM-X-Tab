@@ -3,15 +3,30 @@ package ru.pumx.tab;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 
-public final class PUMXTab extends JavaPlugin {
+public final class PUMXTab extends JavaPlugin implements Listener {
+
+    // Иконки из Resource Pack
+    private static final String ICON_CROWN = "\uE000";
+    private static final String ICON_SHIELD = "\uE001";
+    private static final String ICON_SWORD = "\uE002";
+    private static final String ICON_STAR = "\uE003";
+    private static final String ICON_PLAYER = "\uE004";
+    private static final String ICON_PING = "\uE005";
 
     @Override
     public void onEnable() {
+
         getLogger().info("PUM-X Tab enabled!");
+
+        Bukkit.getPluginManager().registerEvents(this, this);
 
         for (Player player : Bukkit.getOnlinePlayers()) {
             setupPlayer(player);
@@ -30,6 +45,28 @@ public final class PUMXTab extends JavaPlugin {
         getLogger().info("PUM-X Tab disabled.");
     }
 
+    // =========================
+    // ИГРОК ЗАШЁЛ
+    // =========================
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        setupPlayer(event.getPlayer());
+    }
+
+    // =========================
+    // ИГРОК ВЫШЕЛ
+    // =========================
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        removePlayer(event.getPlayer());
+    }
+
+    // =========================
+    // ОБНОВЛЕНИЕ TAB
+    // =========================
+
     private void updateTab() {
 
         int online = Bukkit.getOnlinePlayers().size();
@@ -40,29 +77,86 @@ public final class PUMXTab extends JavaPlugin {
             String header =
                     "\n" +
                     ChatColor.GOLD + "✦ " +
-                    ChatColor.WHITE + "" + ChatColor.BOLD + "PUM-X" +
+                    ChatColor.WHITE + ChatColor.BOLD + "PUM-X" +
                     ChatColor.GOLD + " ✦\n" +
-                    ChatColor.GRAY + "ИГРАЙ • ОБЩАЙСЯ • РАЗВИВАЙСЯ\n" +
-                    ChatColor.DARK_GRAY + "Онлайн: " +
-                    ChatColor.GREEN + online +
-                    ChatColor.GRAY + "/" +
-                    ChatColor.GREEN + max +
-                    "\n";
+
+                    ChatColor.GRAY +
+                    "ИГРАЙ • ОБЩАЙСЯ • РАЗВИВАЙСЯ\n\n" +
+
+                    ChatColor.DARK_GRAY +
+                    "━━━━━━━━━━━━━━━━━━━━\n" +
+
+                    ChatColor.WHITE +
+                    ICON_PLAYER +
+                    "  ОНЛАЙН  " +
+
+                    ChatColor.GREEN +
+                    ChatColor.BOLD +
+                    online +
+
+                    ChatColor.DARK_GRAY +
+                    " / " +
+
+                    ChatColor.GRAY +
+                    max +
+
+                    "\n" +
+
+                    ChatColor.DARK_GRAY +
+                    "━━━━━━━━━━━━━━━━━━━━\n";
 
             String footer =
                     "\n" +
-                    ChatColor.GOLD + "✦ " +
-                    ChatColor.WHITE + "ВМЕСТЕ ДЕЛАЕМ ЭТОТ МИР ЛУЧШЕ!" +
-                    ChatColor.GOLD + " ✦\n" +
-                    ChatColor.GRAY + "Minecraft 1.21.5\n";
+                    ChatColor.GOLD +
+                    "✦ " +
+
+                    ChatColor.WHITE +
+                    ChatColor.BOLD +
+                    "ВМЕСТЕ ДЕЛАЕМ ЭТОТ МИР ЛУЧШЕ!" +
+
+                    ChatColor.GOLD +
+                    " ✦\n" +
+
+                    ChatColor.GRAY +
+                    "PUM-X • Minecraft 1.21.5";
 
             player.setPlayerListHeaderFooter(header, footer);
+
+            updatePlayerDisplay(player);
         }
     }
 
+    // =========================
+    // ОТОБРАЖЕНИЕ ИГРОКА
+    // =========================
+
+    private void updatePlayerDisplay(Player player) {
+
+        String prefix = getRankPrefix(player);
+
+        player.setPlayerListName(
+                prefix +
+                ChatColor.WHITE +
+                player.getName()
+        );
+
+        setupTeam(player);
+    }
+
+    // =========================
+    // TEAM
+    // =========================
+
     private void setupPlayer(Player player) {
 
-        Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
+        setupTeam(player);
+        updatePlayerDisplay(player);
+    }
+
+    private void setupTeam(Player player) {
+
+        Scoreboard scoreboard =
+                Bukkit.getScoreboardManager().getMainScoreboard();
 
         String teamName = getTeamName(player);
 
@@ -73,33 +167,95 @@ public final class PUMXTab extends JavaPlugin {
         }
 
         team.setPrefix(getRankPrefix(player));
-        team.addEntry(player.getName());
+
+        if (!team.hasEntry(player.getName())) {
+            team.addEntry(player.getName());
+        }
     }
+
+    // =========================
+    // УДАЛЕНИЕ
+    // =========================
+
+    private void removePlayer(Player player) {
+
+        Scoreboard scoreboard =
+                Bukkit.getScoreboardManager().getMainScoreboard();
+
+        for (Team team : scoreboard.getTeams()) {
+
+            if (team.hasEntry(player.getName())) {
+                team.removeEntry(player.getName());
+            }
+        }
+    }
+
+    // =========================
+    // РАНГ + ИКОНКА
+    // =========================
 
     private String getRankPrefix(Player player) {
 
         if (player.hasPermission("pumx.owner")) {
-            return ChatColor.GOLD + "[Владелец] " + ChatColor.RESET;
+
+            return ChatColor.GOLD +
+                    ICON_CROWN +
+                    " " +
+                    ChatColor.BOLD +
+                    "[ВЛАДЕЛЕЦ] " +
+                    ChatColor.RESET;
         }
 
         if (player.hasPermission("pumx.admin")) {
-            return ChatColor.RED + "[Админ] " + ChatColor.RESET;
+
+            return ChatColor.RED +
+                    ICON_SHIELD +
+                    " " +
+                    ChatColor.BOLD +
+                    "[АДМИН] " +
+                    ChatColor.RESET;
         }
 
         if (player.hasPermission("pumx.moderator")) {
-            return ChatColor.BLUE + "[Модератор] " + ChatColor.RESET;
+
+            return ChatColor.BLUE +
+                    ICON_SWORD +
+                    " " +
+                    ChatColor.BOLD +
+                    "[МОДЕРАТОР] " +
+                    ChatColor.RESET;
         }
 
         if (player.hasPermission("pumx.captain")) {
-            return ChatColor.DARK_AQUA + "[Капитан] " + ChatColor.RESET;
+
+            return ChatColor.DARK_AQUA +
+                    ICON_STAR +
+                    " " +
+                    ChatColor.BOLD +
+                    "[КАПИТАН] " +
+                    ChatColor.RESET;
         }
 
         if (player.hasPermission("pumx.lieutenant")) {
-            return ChatColor.AQUA + "[Лейтенант] " + ChatColor.RESET;
+
+            return ChatColor.AQUA +
+                    ICON_STAR +
+                    " " +
+                    ChatColor.BOLD +
+                    "[ЛЕЙТЕНАНТ] " +
+                    ChatColor.RESET;
         }
 
-        return ChatColor.GRAY + "[Игрок] " + ChatColor.RESET;
+        return ChatColor.GRAY +
+                ICON_PLAYER +
+                " " +
+                "[ИГРОК] " +
+                ChatColor.RESET;
     }
+
+    // =========================
+    // ПОРЯДОК РАНГОВ
+    // =========================
 
     private String getTeamName(Player player) {
 
