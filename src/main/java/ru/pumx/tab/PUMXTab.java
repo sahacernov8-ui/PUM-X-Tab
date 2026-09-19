@@ -6,31 +6,26 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scoreboard.Scoreboard;
-import org.bukkit.scoreboard.Team;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 public final class PUMXTab extends JavaPlugin implements Listener {
 
-    // Иконки из Resource Pack
-    private static final String ICON_CROWN = "\uE000";
-    private static final String ICON_SHIELD = "\uE001";
-    private static final String ICON_SWORD = "\uE002";
-    private static final String ICON_STAR = "\uE003";
+    private static final String ICON_OWNER = "\uE000";
+    private static final String ICON_ADMIN = "\uE001";
+    private static final String ICON_MODERATOR = "\uE002";
     private static final String ICON_PLAYER = "\uE004";
     private static final String ICON_PING = "\uE005";
 
     @Override
     public void onEnable() {
 
-        getLogger().info("PUM-X Tab enabled!");
+        getLogger().info("PUM-X TAB enabled!");
 
         Bukkit.getPluginManager().registerEvents(this, this);
-
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            setupPlayer(player);
-        }
 
         Bukkit.getScheduler().runTaskTimer(
                 this,
@@ -42,164 +37,126 @@ public final class PUMXTab extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
-        getLogger().info("PUM-X Tab disabled.");
+        getLogger().info("PUM-X TAB disabled!");
     }
-
-    // =========================
-    // ИГРОК ЗАШЁЛ
-    // =========================
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        setupPlayer(event.getPlayer());
+        updateTab();
     }
-
-    // =========================
-    // ИГРОК ВЫШЕЛ
-    // =========================
-
-    @EventHandler
-    public void onQuit(PlayerQuitEvent event) {
-        removePlayer(event.getPlayer());
-    }
-
-    // =========================
-    // ОБНОВЛЕНИЕ TAB
-    // =========================
 
     private void updateTab() {
 
-        int online = Bukkit.getOnlinePlayers().size();
+        List<Player> players =
+                new ArrayList<>(Bukkit.getOnlinePlayers());
+
+        players.sort(
+                Comparator
+                        .comparingInt(this::getRankPriority)
+                        .thenComparing(Player::getName)
+        );
+
+        int online = players.size();
         int max = Bukkit.getMaxPlayers();
 
-        for (Player player : Bukkit.getOnlinePlayers()) {
+        for (Player viewer : players) {
 
-            String header =
+            StringBuilder header = new StringBuilder();
+
+            header.append("\n");
+
+            header.append(ChatColor.GOLD)
+                    .append("✦ ");
+
+            header.append(ChatColor.WHITE)
+                    .append(ChatColor.BOLD)
+                    .append("PUM-X");
+
+            header.append(ChatColor.GOLD)
+                    .append(" ✦\n");
+
+            header.append(ChatColor.GRAY)
+                    .append("ИГРАЙ • ОБЩАЙСЯ • РАЗВИВАЙСЯ")
+                    .append("\n\n");
+
+            header.append(ChatColor.DARK_GRAY)
+                    .append("╭────────────────────────╮")
+                    .append("\n");
+
+            header.append(ChatColor.WHITE)
+                    .append(ChatColor.BOLD)
+                    .append("     ONLINE  ");
+
+            header.append(ChatColor.GREEN)
+                    .append(online);
+
+            header.append(ChatColor.GRAY)
+                    .append(" / ")
+                    .append(max)
+                    .append("\n");
+
+            header.append(ChatColor.DARK_GRAY)
+                    .append("╰────────────────────────╯")
+                    .append("\n\n");
+
+            viewer.setPlayerListHeader(header.toString());
+
+            viewer.setPlayerListFooter(
                     "\n" +
-                    ChatColor.GOLD + "✦ " +
-                    ChatColor.WHITE + ChatColor.BOLD + "PUM-X" +
-                    ChatColor.GOLD + " ✦\n" +
-
-                    ChatColor.GRAY +
-                    "ИГРАЙ • ОБЩАЙСЯ • РАЗВИВАЙСЯ\n\n" +
-
                     ChatColor.DARK_GRAY +
-                    "━━━━━━━━━━━━━━━━━━━━\n" +
-
-                    ChatColor.WHITE +
-                    ICON_PLAYER +
-                    "  ОНЛАЙН  " +
-
-                    ChatColor.GREEN +
-                    ChatColor.BOLD +
-                    online +
-
-                    ChatColor.DARK_GRAY +
-                    " / " +
-
-                    ChatColor.GRAY +
-                    max +
-
-                    "\n" +
-
-                    ChatColor.DARK_GRAY +
-                    "━━━━━━━━━━━━━━━━━━━━\n";
-
-            String footer =
+                    "────────────────────────" +
                     "\n" +
                     ChatColor.GOLD +
                     "✦ " +
-
                     ChatColor.WHITE +
                     ChatColor.BOLD +
-                    "ВМЕСТЕ ДЕЛАЕМ ЭТОТ МИР ЛУЧШЕ!" +
-
+                    "PUM-X" +
                     ChatColor.GOLD +
-                    " ✦\n" +
-
+                    " ✦" +
+                    "\n" +
                     ChatColor.GRAY +
-                    "PUM-X • Minecraft 1.21.5";
+                    "Minecraft 1.21.5"
+            );
 
-            player.setPlayerListHeaderFooter(header, footer);
-
-            updatePlayerDisplay(player);
+            updatePlayers(viewer, players);
         }
     }
 
-    // =========================
-    // ОТОБРАЖЕНИЕ ИГРОКА
-    // =========================
+    private void updatePlayers(
+            Player viewer,
+            List<Player> players
+    ) {
 
-    private void updatePlayerDisplay(Player player) {
+        for (Player target : players) {
 
-        String prefix = getRankPrefix(player);
+            String prefix = getPrefix(target);
 
-        player.setPlayerListName(
-                prefix +
-                ChatColor.WHITE +
-                player.getName()
-        );
+            String ping =
+                    ChatColor.DARK_GRAY +
+                    ICON_PING +
+                    " " +
+                    ChatColor.GRAY +
+                    target.getPing() +
+                    "ms";
 
-        setupTeam(player);
-    }
+            viewer.getPlayerListHeader();
 
-    // =========================
-    // TEAM
-    // =========================
-
-    private void setupPlayer(Player player) {
-
-        setupTeam(player);
-        updatePlayerDisplay(player);
-    }
-
-    private void setupTeam(Player player) {
-
-        Scoreboard scoreboard =
-                Bukkit.getScoreboardManager().getMainScoreboard();
-
-        String teamName = getTeamName(player);
-
-        Team team = scoreboard.getTeam(teamName);
-
-        if (team == null) {
-            team = scoreboard.registerNewTeam(teamName);
-        }
-
-        team.setPrefix(getRankPrefix(player));
-
-        if (!team.hasEntry(player.getName())) {
-            team.addEntry(player.getName());
+            target.setPlayerListName(
+                    prefix +
+                    ChatColor.WHITE +
+                    target.getName() +
+                    " " +
+                    ping
+            );
         }
     }
 
-    // =========================
-    // УДАЛЕНИЕ
-    // =========================
-
-    private void removePlayer(Player player) {
-
-        Scoreboard scoreboard =
-                Bukkit.getScoreboardManager().getMainScoreboard();
-
-        for (Team team : scoreboard.getTeams()) {
-
-            if (team.hasEntry(player.getName())) {
-                team.removeEntry(player.getName());
-            }
-        }
-    }
-
-    // =========================
-    // РАНГ + ИКОНКА
-    // =========================
-
-    private String getRankPrefix(Player player) {
+    private String getPrefix(Player player) {
 
         if (player.hasPermission("pumx.owner")) {
 
             return ChatColor.GOLD +
-                    ICON_CROWN +
+                    ICON_OWNER +
                     " " +
                     ChatColor.BOLD +
                     "[ВЛАДЕЛЕЦ] " +
@@ -209,7 +166,7 @@ public final class PUMXTab extends JavaPlugin implements Listener {
         if (player.hasPermission("pumx.admin")) {
 
             return ChatColor.RED +
-                    ICON_SHIELD +
+                    ICON_ADMIN +
                     " " +
                     ChatColor.BOLD +
                     "[АДМИН] " +
@@ -219,7 +176,7 @@ public final class PUMXTab extends JavaPlugin implements Listener {
         if (player.hasPermission("pumx.moderator")) {
 
             return ChatColor.BLUE +
-                    ICON_SWORD +
+                    ICON_MODERATOR +
                     " " +
                     ChatColor.BOLD +
                     "[МОДЕРАТОР] " +
@@ -229,8 +186,7 @@ public final class PUMXTab extends JavaPlugin implements Listener {
         if (player.hasPermission("pumx.captain")) {
 
             return ChatColor.DARK_AQUA +
-                    ICON_STAR +
-                    " " +
+                    "★ " +
                     ChatColor.BOLD +
                     "[КАПИТАН] " +
                     ChatColor.RESET;
@@ -239,8 +195,7 @@ public final class PUMXTab extends JavaPlugin implements Listener {
         if (player.hasPermission("pumx.lieutenant")) {
 
             return ChatColor.AQUA +
-                    ICON_STAR +
-                    " " +
+                    "★ " +
                     ChatColor.BOLD +
                     "[ЛЕЙТЕНАНТ] " +
                     ChatColor.RESET;
@@ -253,32 +208,28 @@ public final class PUMXTab extends JavaPlugin implements Listener {
                 ChatColor.RESET;
     }
 
-    // =========================
-    // ПОРЯДОК РАНГОВ
-    // =========================
-
-    private String getTeamName(Player player) {
+    private int getRankPriority(Player player) {
 
         if (player.hasPermission("pumx.owner")) {
-            return "01_owner";
+            return 1;
         }
 
         if (player.hasPermission("pumx.admin")) {
-            return "02_admin";
+            return 2;
         }
 
         if (player.hasPermission("pumx.moderator")) {
-            return "03_moderator";
+            return 3;
         }
 
         if (player.hasPermission("pumx.captain")) {
-            return "04_captain";
+            return 4;
         }
 
         if (player.hasPermission("pumx.lieutenant")) {
-            return "05_lieutenant";
+            return 5;
         }
 
-        return "99_player";
+        return 99;
     }
 }
